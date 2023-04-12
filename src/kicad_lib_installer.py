@@ -1,38 +1,32 @@
 import os
-import urllib.request
-import zipfile
-import argparse
+import sys
+import subprocess
 
-# Parse the Github URL argument
-parser = argparse.ArgumentParser(description='Install KiCAD footprint and symbol libraries from a Github repository.')
-parser.add_argument('github_url', metavar='url', type=str, help='the Github URL for the KiCAD library')
-args = parser.parse_args()
+# Get the repository URL from the command line argument
+if len(sys.argv) < 2:
+    print("Please provide a GitHub repository URL for a KiCAD library as a command line argument.")
+    sys.exit(1)
+repo_url = sys.argv[1]
 
-# Define the library names and URLs
-library_name = args.github_url.split("/")[-1].split(".")[0]
-footprint_library_url = f'{args.github_url}/archive/master.zip'
-symbol_library_url = f'{args.github_url}-symbols/archive/master.zip'
+# Get the user's home folder path
+home_folder = os.path.expanduser("~")
 
-# Define the path to the KiCAD footprint and symbol libraries folders
-footprint_libraries_folder_path = f'/home/adam/.local/share/kicad/modules'
-symbol_libraries_folder_path = f'/home/adam/.local/share/kicad/symbols'
+# Clone the repository to the user's home folder
+# Get the repository name from the URL and remove the .git extension
+repo_name = repo_url.split("/")[-1].replace(".git", "")
+# Construct the path to the repository in the user's home folder
+repo_path = os.path.join(home_folder, repo_name)
+# Run the git clone command to clone the repository
+subprocess.run(["git", "clone", repo_url, repo_path])
 
-# Download and extract the footprint library zip file
-urllib.request.urlretrieve(footprint_library_url, f"{library_name}.zip")
-with zipfile.ZipFile(f"{library_name}.zip", 'r') as zip_ref:
-    # Extract the files to a temporary folder with the library name
-    zip_ref.extractall(f"{library_name}")
-    # Extract the files to the KiCAD footprint libraries folder
-    zip_ref.extractall(footprint_libraries_folder_path)
-# Remove the temporary zip file
-os.remove(f"{library_name}.zip")
-
-# Download and extract the symbol library zip file
-urllib.request.urlretrieve(symbol_library_url, f"{library_name}_symbols.zip")
-with zipfile.ZipFile(f"{library_name}_symbols.zip", 'r') as zip_ref:
-    # Extract the files to a temporary folder with the library name + "-symbols"
-    zip_ref.extractall(f"{library_name}-symbols")
-    # Extract the files to the KiCAD symbol libraries folder
-    zip_ref.extractall(symbol_libraries_folder_path)
-# Remove the temporary zip file
-os.remove(f"{library_name}_symbols.zip")
+# Install the libraries into KiCAD
+# Construct the path to the KiCAD library folder in the user's home folder
+kicad_lib_path = os.path.join(home_folder, "Documents", "KiCAD", "library")
+# Search the cloned repository directory for all KiCAD symbol and footprint library files
+for root, dirs, files in os.walk(os.path.join(repo_path, "library")):
+    for file in files:
+        # If the file is a KiCAD symbol or footprint library file, copy it to the KiCAD library folder
+        if file.endswith(".lib"):
+            subprocess.run(["cp", os.path.join(root, file), os.path.join(kicad_lib_path, file)])
+        elif file.endswith(".pretty"):
+            subprocess.run(["cp", "-r", os.path.join(root, file), os.path.join(kicad_lib_path, file)])
