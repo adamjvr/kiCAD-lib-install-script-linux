@@ -30,3 +30,13 @@ for root, dirs, files in os.walk(os.path.join(repo_path, "library")):
             subprocess.run(["cp", os.path.join(root, file), os.path.join(kicad_lib_path, file)])
         elif file.endswith(".pretty"):
             subprocess.run(["cp", "-r", os.path.join(root, file), os.path.join(kicad_lib_path, file)])
+
+# Add the cloned library path to KiCAD's configured paths for libraries
+kicad_conf_path = os.path.join(home_folder, ".config", "kicad")
+kicad_conf_file = os.path.join(kicad_conf_path, "kicad_common")
+with open(kicad_conf_file, "a") as f:
+    f.write("\n[libraries]\n")
+    f.write("LibName1={}\n".format(repo_path))
+
+# Update KiCAD's configured paths for libraries
+subprocess.run(["sed", "-i", "s|/usr/share/kicad|/usr/local/share/kicad|g", os.path.join(kicad_conf_path, "fp-lib-table")])
